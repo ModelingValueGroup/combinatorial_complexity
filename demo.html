@@ -1,0 +1,228 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Combinatorial Complexity Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.js"
+            integrity="sha512-GE9mKnPrTn2DY5AZuIC9yE6K4FF8T+9lsO7jwHn+RW9rEjnHzF/in0oGwlPzRwjhQ+oJiawmtfvleX+l6h5/cA=="
+            crossorigin="anonymous"></script>
+    <style type="text/css">
+		body {
+			font-family : Arial, Helvetica, sans-serif;
+		}
+		h1 {
+			text-align : center;
+		}
+		#mynetwork {
+			height           : 80%;
+			border           : 2px solid lightgray;
+			background-color : lightcyan;
+		/ / lightyellow;
+		}
+		.bar {
+			overflow         : hidden;
+			background-color : darkcyan;
+		}
+		.bar .barLabel {
+			float           : left;
+			font-size       : 16px;
+			color           : white;
+			text-align      : center;
+			padding         : 14px 2px 14px 16px;
+			text-decoration : none;
+		}
+		.bar .barField {
+		}
+		.bar .barField input {
+			font-size        : 16px;
+			border           : solid;
+			outline          : none;
+			color            : white;
+			font-family      : inherit;
+			border-color     : white;
+			border-width     : 1px;
+			background-color : inherit;
+			margin           : 8px 2px;
+			padding          : 3px 6px;
+			width            : 2em
+		}
+		.barField, .barLabel {
+			float    : left;
+			overflow : hidden;
+		}
+    </style>
+</head>
+<body>
+<h1>Combinatorial Complexity Demo</h1>
+<br/>
+<div class="bar">
+    <div class="barLabel">aantal vragen:</div>
+    <div class="barField"><input id="aantalVragenBox" value="2"></div>
+    <div class="barLabel">aantal antwoorden:</div>
+    <div class="barField"><input id="aantalAntwoordenBox" value="2"></div>
+    <div class="barLabel">aantal nodes:</div>
+    <div class="barLabel" id="aantalNodes"></div>
+</div>
+
+<div id="mynetwork"></div>
+<script>
+    const MAX_AANTAL = 8
+    const nodes = new vis.DataSet([]);
+    const edges = new vis.DataSet([]);
+    var data = {
+        nodes: nodes,
+        edges: edges,
+    };
+    var container = document.getElementById("mynetwork");
+    const options = {
+        nodes: {
+            shape: "box",
+            allowedToMoveX: true,
+            allowedToMoveY: true,
+        },
+        edges: {
+            color: "black",
+            font: {
+                color: "black"
+            }
+        },
+        // layout: {
+        //     hierarchical: {
+        //         "direction": "UD",
+        //         "enabled": true,
+        //         "levelSeparation": 295,
+        //         "nodeSpacing": 55,
+        //         "treeSpacing": 165,
+        //         "blockShifting": false,
+        //         "edgeMinimization": false,
+        //         "parentCentralization": false,
+        //         "sortMethod": "directed"
+        //     },
+        // },
+
+        physics: {
+            enabled: true,
+            maxVelocity: 25,
+            minVelocity: 0.1,
+        },
+
+        // configure: {
+        //     filter: function (option, path) {
+        //         return true;//path.includes("hierarchical")/* || path.includes("nodes")*/;
+        //     }
+        // },
+    };
+    var network = new vis.Network(container, data, options);
+    network.on('stabilized', function () {
+        network.fit({animation: true});
+    });
+
+    var taskQueue = [];
+    setInterval(function () {
+        const t = taskQueue.shift();
+        if (typeof t !== "undefined") {
+            t();
+        }
+    }, 100);
+
+    function antwoordLabel(i) {
+        return String.fromCharCode("A".charCodeAt() + i);
+    }
+
+    function perc2color(perc) {
+        var r, g, b = 0;
+        if (perc < 50) {
+            r = 255;
+            g = Math.round(5.1 * perc);
+        } else {
+            g = 255;
+            r = Math.round(510 - 5.10 * perc);
+        }
+        var h = r * 0x10000 + g * 0x100 + b;
+        return '#' + ('000000' + h.toString(16)).slice(-6);
+    }
+
+    function regenerateNetwork() {
+        taskQueue = []
+
+        const aantalVragen = parseInt(document.getElementById("aantalVragenBox").value);
+        const aantalAntwoorden = parseInt(document.getElementById("aantalAntwoordenBox").value);
+
+        nodes.clear();
+        edges.clear();
+        var nextId = 0;
+
+        function level(parentId, vraagNummer, uitslag) {
+            if (vraagNummer <= aantalVragen) {
+                let vraagLabel = vraagNummer === aantalVragen ? "" : (":vraag " + (vraagNummer + 1))
+                let position = network.getPositions(parentId)[parentId];
+                let parentX = position.x
+                let parentY = position.y
+                for (let i = 0; i < aantalAntwoorden; i++) {
+                    let edgeLabel = antwoordLabel(i);
+                    let nodeId = nextId++;
+                    let edgeId = nextId++;
+                    let nodeLabel = uitslag + edgeLabel + vraagLabel;
+                    nodes.add({
+                        id: nodeId,
+                        label: nodeLabel,
+                        x: parentX,
+                        y: parentY,
+                        color: perc2color(100 - 100 * vraagNummer / MAX_AANTAL)
+                    });
+                    edges.add({
+                        id: edgeId,
+                        from: parentId,
+                        to: nodeId,
+                        label: edgeLabel
+                    });
+
+                    document.getElementById("aantalNodes").innerHTML = nodes.length;
+                    taskQueue.push(function () {
+                        level(nodeId, vraagNummer + 1, uitslag + edgeLabel)
+                    });
+                }
+                network.fit();
+            }
+        }
+
+        var rootNodeId = nextId++;
+        nodes.add({
+            id: rootNodeId,
+            label: "vraag 1",
+            color: perc2color(100)
+        });
+        level(rootNodeId, 1, "");
+    }
+
+    regenerateNetwork();
+
+    function setInputFilter(textbox, inputFilter) {
+        ["input", "keydown", "keyup", "mousedown", "mouseup", "select", "contextmenu", "drop"].forEach(function (event) {
+            textbox.addEventListener(event, function () {
+                if (inputFilter(this.value)) {
+                    const changed = this.oldValue !== undefined && "" + this.oldValue !== this.value;
+                    this.oldValue = this.value;
+                    this.setSelectionRange(0, 1);
+                    if (changed) {
+                        setTimeout(regenerateNetwork, 100)
+                    }
+                } else if (this.hasOwnProperty("oldValue")) {
+                    this.value = this.oldValue;
+                    this.setSelectionRange(0, 1);
+                } else {
+                    this.value = "1";
+                }
+            });
+        });
+    }
+
+    setInputFilter(document.getElementById("aantalVragenBox"), function (value) {
+        return /^\d*$/.test(value) && (value === "" || parseInt(value) <= MAX_AANTAL);
+    });
+    setInputFilter(document.getElementById("aantalAntwoordenBox"), function (value) {
+        return /^\d*$/.test(value) && (value === "" || parseInt(value) <= MAX_AANTAL);
+    });
+</script>
+
+</body>
+</html>
