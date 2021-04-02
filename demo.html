@@ -188,7 +188,7 @@
     }
 
     function numNodes(n, a) {
-        return n < 1 ? 0 : n + numNodes(n / a, a);
+        return n === 1 ? 1 : n < 1 ? 0 : n + numNodes(n / a, a);
     }
 
     function randomize(z) {
@@ -201,7 +201,7 @@
         const aantalVragen = parseInt(document.getElementById("aantalVragenBox").value);
         const aantalAntwoorden = parseInt(document.getElementById("aantalAntwoordenBox").value);
 
-        const aantalNodes = numNodes(Math.pow(aantalAntwoorden, aantalVragen), aantalAntwoorden)
+        const aantalNodes = aantalAntwoorden === 1 ? aantalVragen + 1 : numNodes(Math.pow(aantalAntwoorden, aantalVragen), aantalAntwoorden)
 
         nodes.clear();
         edges.clear();
