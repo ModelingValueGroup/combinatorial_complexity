@@ -30,19 +30,25 @@
 			text-decoration : none;
 		}
 		.bar .barField {
+			color : white;
 		}
 		.bar .barField input {
 			font-size        : 16px;
-			border           : solid;
 			outline          : none;
 			color            : white;
 			font-family      : inherit;
-			border-color     : white;
-			border-width     : 1px;
+			border           : 1px solid white;
 			background-color : inherit;
 			margin           : 10px 2px;
 			padding          : 3px 6px;
 			width            : 2em
+		}
+		.bar .barField input[type=text] {
+			width : 25px
+		}
+		.bar .barField input[type=radio] {
+			margin : 16px 2px 16px 20px;
+			width  : 20px
 		}
 		.barField, .barLabel {
 			float    : left;
@@ -54,10 +60,15 @@
 <h1>Combinatorial Complexity Demo</h1>
 <br/>
 <div class="bar">
+    <div class="barField">
+        <input type="radio" name="choice" value="yes" onchange="wolk();" checked="checked">wolk
+        <input type="radio" name="choice" value="no" onchange="boom();">boom
+    </div>
+    <div class="barLabel"></div>
     <div class="barLabel">aantal vragen:</div>
-    <div class="barField"><input id="aantalVragenBox" value="2"></div>
+    <div class="barField"><input id="aantalVragenBox" type="text"></div>
     <div class="barLabel">aantal antwoorden:</div>
-    <div class="barField"><input id="aantalAntwoordenBox" value="2"></div>
+    <div class="barField"><input id="aantalAntwoordenBox" type="text"></div>
     <div class="barLabel">aantal nodes:</div>
     <div class="barLabel" id="aantalNodes"></div>
 </div>
@@ -67,16 +78,14 @@
     const MAX_AANTAL = 8
     const nodes = new vis.DataSet([]);
     const edges = new vis.DataSet([]);
-    var data = {
+    let data = {
         nodes: nodes,
         edges: edges,
     };
-    var container = document.getElementById("mynetwork");
-    const options = {
+    let container = document.getElementById("mynetwork");
+    const boomOptions = {
         nodes: {
             shape: "box",
-            allowedToMoveX: true,
-            allowedToMoveY: true,
         },
         edges: {
             color: "black",
@@ -84,24 +93,23 @@
                 color: "black"
             }
         },
-        // layout: {
-        //     hierarchical: {
-        //         "direction": "UD",
-        //         "enabled": true,
-        //         "levelSeparation": 295,
-        //         "nodeSpacing": 55,
-        //         "treeSpacing": 165,
-        //         "blockShifting": false,
-        //         "edgeMinimization": false,
-        //         "parentCentralization": false,
-        //         "sortMethod": "directed"
-        //     },
-        // },
-
         physics: {
             enabled: true,
             maxVelocity: 25,
             minVelocity: 0.1,
+        },
+        layout: {
+            hierarchical: {
+                "enabled": true,
+                "direction": "UD",
+                "levelSeparation": 295,
+                "nodeSpacing": 55,
+                "treeSpacing": 165,
+                "blockShifting": false,
+                "edgeMinimization": false,
+                "parentCentralization": false,
+                "sortMethod": "directed"
+            },
         },
 
         // configure: {
@@ -110,12 +118,51 @@
         //     }
         // },
     };
-    var network = new vis.Network(container, data, options);
+    const wolkOptions = {
+        nodes: {
+            shape: "box",
+        },
+        edges: {
+            color: "black",
+            font: {
+                color: "black"
+            }
+        },
+        physics: {
+            enabled: true,
+            maxVelocity: 25,
+            minVelocity: 0.1,
+        },
+        layout: {
+            hierarchical: {
+                "enabled": false,
+            },
+        },
+
+        // configure: {
+        //     filter: function (option, path) {
+        //         return true;//path.includes("hierarchical")/* || path.includes("nodes")*/;
+        //     }
+        // },
+    };
+    let network = new vis.Network(container, data);
+    network.setOptions(wolkOptions);
+
     network.on('stabilized', function () {
         network.fit({animation: true});
     });
 
-    var taskQueue = [];
+    function wolk() {
+        network.setOptions(wolkOptions)
+        regenerateNetwork()
+    }
+
+    function boom() {
+        network.setOptions(boomOptions)
+        regenerateNetwork()
+    }
+
+    let taskQueue = [];
     setInterval(function () {
         const t = taskQueue.shift();
         if (typeof t !== "undefined") {
@@ -124,11 +171,11 @@
     }, 100);
 
     function antwoordLabel(i) {
-        return String.fromCharCode("A".charCodeAt() + i);
+        return String.fromCharCode("A".charCodeAt(0) + i);
     }
 
     function perc2color(perc) {
-        var r, g, b = 0;
+        let r, g, b = 0;
         if (perc < 50) {
             r = 255;
             g = Math.round(5.1 * perc);
@@ -136,8 +183,16 @@
             g = 255;
             r = Math.round(510 - 5.10 * perc);
         }
-        var h = r * 0x10000 + g * 0x100 + b;
+        let h = r * 0x10000 + g * 0x100 + b;
         return '#' + ('000000' + h.toString(16)).slice(-6);
+    }
+
+    function numNodes(n, a) {
+        return n < 1 ? 0 : n + numNodes(n / a, a);
+    }
+
+    function randomize(z) {
+        return z + (Math.random() * 10 - 5)
     }
 
     function regenerateNetwork() {
@@ -146,9 +201,11 @@
         const aantalVragen = parseInt(document.getElementById("aantalVragenBox").value);
         const aantalAntwoorden = parseInt(document.getElementById("aantalAntwoordenBox").value);
 
+        const aantalNodes = numNodes(Math.pow(aantalAntwoorden, aantalVragen), aantalAntwoorden)
+
         nodes.clear();
         edges.clear();
-        var nextId = 0;
+        let nextId = 0;
 
         function level(parentId, vraagNummer, uitslag) {
             if (vraagNummer <= aantalVragen) {
@@ -164,8 +221,8 @@
                     nodes.add({
                         id: nodeId,
                         label: nodeLabel,
-                        x: parentX,
-                        y: parentY,
+                        x: randomize(parentX),
+                        y: randomize(parentY),
                         color: perc2color(100 - 100 * vraagNummer / MAX_AANTAL)
                     });
                     edges.add({
@@ -175,7 +232,7 @@
                         label: edgeLabel
                     });
 
-                    document.getElementById("aantalNodes").innerHTML = nodes.length;
+                    document.getElementById("aantalNodes").innerHTML = nodes.length + " (van " + aantalNodes + ")";
                     taskQueue.push(function () {
                         level(nodeId, vraagNummer + 1, uitslag + edgeLabel)
                     });
@@ -184,7 +241,7 @@
             }
         }
 
-        var rootNodeId = nextId++;
+        let rootNodeId = nextId++;
         nodes.add({
             id: rootNodeId,
             label: "vraag 1",
@@ -193,25 +250,21 @@
         level(rootNodeId, 1, "");
     }
 
-    regenerateNetwork();
-
     function setInputFilter(textbox, inputFilter) {
         ["input", "keydown", "keyup", "mousedown", "mouseup", "select", "contextmenu", "drop"].forEach(function (event) {
             textbox.addEventListener(event, function () {
-                if (inputFilter(this.value)) {
-                    const changed = this.oldValue !== undefined && "" + this.oldValue !== this.value;
-                    this.oldValue = this.value;
-                    this.setSelectionRange(0, 1);
-                    if (changed) {
-                        setTimeout(regenerateNetwork, 100)
-                    }
-                } else if (this.hasOwnProperty("oldValue")) {
+                if (!inputFilter(this.value)) {
                     this.value = this.oldValue;
-                    this.setSelectionRange(0, 1);
-                } else {
-                    this.value = "1";
                 }
+                const changed = this.oldValue !== this.value;
+                if (changed) {
+                    setTimeout(regenerateNetwork, 100)
+                }
+                this.oldValue = this.value;
+                this.setSelectionRange(0, 1);
             });
+            textbox.oldValue = "2";
+            textbox.value = "2";
         });
     }
 
@@ -221,7 +274,8 @@
     setInputFilter(document.getElementById("aantalAntwoordenBox"), function (value) {
         return /^\d*$/.test(value) && (value === "" || parseInt(value) <= MAX_AANTAL);
     });
-</script>
 
+    regenerateNetwork();
+</script>
 </body>
 </html>
