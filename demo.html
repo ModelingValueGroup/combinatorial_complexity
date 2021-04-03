@@ -113,6 +113,8 @@
     let aantalNodesBox = document.getElementById("aantalNodes");
     let networkDiv = document.getElementById("network");
 
+    let taskQueue = [];
+
     const MAX_AANTAL = 8
     const nodes = new vis.DataSet([]);
     const edges = new vis.DataSet([]);
@@ -195,11 +197,10 @@
     }
 
     function activate() {
-        let wasEmpty = nodes.empty
         clearTaskQueue()
         nodes.clear();
         edges.clear();
-        setTimeout(regenerateNetwork, wasEmpty ? 0 : 300)
+        regenerateNetwork()
     }
 
     function wolk() {
@@ -239,8 +240,6 @@
         return z + (Math.random() * 10 - 5)
     }
 
-    let taskQueue = [];
-
     function queueTask(task) {
         let wasEmpty = taskQueue.length === 0;
         taskQueue.push(task)
@@ -262,16 +261,17 @@
     }
 
     function regenerateNetwork() {
-        clearTaskQueue()
 
         const aantalVragen = parseInt(aantalVragenBox.value);
         const aantalAntwoorden = parseInt(aantalAntwoordenBox.value);
 
         const aantalNodes = aantalAntwoorden === 1 ? aantalVragen + 1 : numNodes(Math.pow(aantalAntwoorden, aantalVragen), aantalAntwoorden)
 
+        network.setOptions(wolkRadio.checked ? wolkOptions : boomOptions)
+
+        clearTaskQueue()
         nodes.clear();
         edges.clear();
-        network.setOptions(wolkRadio.checked ? wolkOptions : boomOptions)
 
         let nextId = 0;
 
